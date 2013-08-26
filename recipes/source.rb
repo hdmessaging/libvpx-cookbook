@@ -2,7 +2,7 @@
 # Cookbook Name:: libvpx
 # Recipe:: source
 #
-# Author:: Jamie Winsor (<jamie@vialstudios.com>)
+# Author:: Jamie Winsor (<jamie@enmasse.com>)
 #
 # Copyright 2011, En Masse Entertainment, Inc.
 #
@@ -37,18 +37,31 @@ package yasm_package do
   action :upgrade
 end
 
+# Write the flags used to compile the application to disk. If the flags
+# do not match those that are in the compiled_flags attribute - we recompile
+template "#{Chef::Config[:file_cache_path]}/libvpx-compiled_with_flags" do
+  source "compiled_with_flags.erb"
+  owner "root"
+  group "root"
+  mode 0600
+  variables(
+    :compile_flags => node[:libvpx][:compile_flags]
+  )
+end
+
 git "#{Chef::Config[:file_cache_path]}/libvpx" do
   repository node[:libvpx][:git_repository]
   reference node[:libvpx][:git_revision]
   action :sync
-  notifies :run, "bash[compile_libvpx]"
 end
+
 
 bash "compile_libvpx" do
   cwd "#{Chef::Config[:file_cache_path]}/libvpx"
   code <<-EOH
-    ./configure --prefix=#{node[:libvpx][:prefix]}
+    ./configure --prefix=#{node[:libvpx][:prefix]} #{node[:libvpx][:compile_flags].join(' ')}
     make clean && make && make install
   EOH
   creates "#{node[:libvpx][:prefix]}/bin/vpxenc"
 end
+
